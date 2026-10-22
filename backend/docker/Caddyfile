@@ -1,0 +1,19 @@
+{
+	frankenphp
+	order php_server before file_server
+	auto_https off
+	admin off
+}
+
+:80 {
+	root * /app/public
+	encode zstd gzip
+
+	# Access log ke stdout supaya terlihat di `docker compose logs backend`
+	log {
+		output stdout
+		format console
+	}
+
+	php_server
+}
