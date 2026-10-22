@@ -57,3 +57,54 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: /api
+
+  deploy:
+    name: deploy
+    needs: [backend-test, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/booking-backend
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/booking-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose with secrets
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          DB_DATABASE: booking_db
+          DB_USERNAME: booking_user
+          ADMIN_EMAIL: admin@example.com
+        run: docker compose config -q
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            VITE_API_URL=/api
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
