@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Booking;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class BookingRequest extends FormRequest
@@ -73,5 +74,31 @@ class BookingRequest extends FormRequest
                 );
             }
         });
+    }
+
+    /**
+     * Catat validasi gagal sebagai warning. Hanya nama kolom dan nama aturan
+     * yang dicatat, tidak ada nilai yang dikirim pengguna.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        $gagal = $validator->failed();
+        $aturan = [];
+
+        foreach ($validator->errors()->keys() as $kolom) {
+            // Error tanpa aturan bawaan hanya berasal dari pengecekan jadwal bentrok.
+            $aturan[$kolom] = isset($gagal[$kolom])
+                ? array_keys($gagal[$kolom])
+                : ['JadwalBentrok'];
+        }
+
+        Log::warning('booking.validasi_gagal', [
+            'user_id' => $this->user()?->id,
+            'aksi' => $this->isMethod('post') ? 'membuat booking' : 'mengubah booking',
+            'kolom_gagal' => array_keys($aturan),
+            'aturan_gagal' => $aturan,
+        ]);
+
+        parent::failedValidation($validator);
     }
 }

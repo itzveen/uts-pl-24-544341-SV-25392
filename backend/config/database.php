@@ -61,6 +61,8 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Timeout koneksi (detik) supaya /health cepat membalas 503 saat DB mati.
+                PDO::ATTR_TIMEOUT => (int) env('DB_TIMEOUT', 3),
             ]) : [],
         ],
 
@@ -81,6 +83,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => (int) env('DB_TIMEOUT', 3),
             ]) : [],
         ],
 
