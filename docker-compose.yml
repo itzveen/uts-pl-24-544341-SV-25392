@@ -34,7 +34,8 @@ services:
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY:?isi APP_KEY di file .env}
       APP_URL: http://localhost:8000
-      LOG_CHANNEL: stderr
+      LOG_CHANNEL: stdout
+      LOG_LEVEL: info
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
