@@ -36,6 +36,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Saat db mati, nama "db" hilang dari DNS Docker. Tanpa batas ini, pencarian
+    # DNS bisa menggantung melewati batas waktu PHP (30 detik) dan /health
+    # membalas 500, bukan 503. Dengan opsi ini DNS gagal dalam ~1-2 detik.
+    dns_opt:
+      - "timeout:1"
+      - "attempts:1"
     environment:
       APP_NAME: BookingAPI
       APP_ENV: production
