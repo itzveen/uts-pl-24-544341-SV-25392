@@ -1,5 +1,12 @@
 name: booking-app
 
+# Batas ukuran log: tiap container maksimal 3 berkas x 10 MB.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: mysql:8.4
@@ -17,6 +24,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 20s
+    logging: *default-logging
     networks:
       - booking-net
 
@@ -48,11 +56,13 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:?isi ADMIN_EMAIL di file .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?isi ADMIN_PASSWORD di file .env}
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:80/up || exit 1"]
+      # /health memeriksa database dan cache; curl -f membuat respons 503 dianggap gagal.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:80/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 3
       start_period: 30s
+    logging: *default-logging
     ports:
       - "8000:80"
     networks:
@@ -67,6 +77,7 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    logging: *default-logging
     ports:
       - "8080:80"
     networks:
