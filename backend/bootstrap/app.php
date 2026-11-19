@@ -8,6 +8,43 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
+if (! class_exists('RecordPrometheusMetricsMiddleware', false)) {
+    class RecordPrometheusMetricsMiddleware
+    {
+        public function handle(Request $request, \Closure $next)
+        {
+            $response = $next($request);
+
+            try {
+                $file = storage_path('framework/cache/prometheus_metrics.json');
+                $fp = @fopen($file, 'c+');
+                if ($fp && flock($fp, LOCK_EX)) {
+                    $raw = stream_get_contents($fp);
+                    $data = $raw ? (json_decode($raw, true) ?: []) : [];
+                    $method = $request->method();
+                    $path = '/'.ltrim($request->route()?->uri() ?? $request->path(), '/');
+                    $status = (string) $response->getStatusCode();
+                    $key = "{$method}|{$path}|{$status}";
+                    $data[$key] = ($data[$key] ?? 0) + 1;
+
+                    ftruncate($fp, 0);
+                    rewind($fp);
+                    fwrite($fp, json_encode($data));
+                    fflush($fp);
+                    flock($fp, LOCK_UN);
+                }
+                if ($fp) {
+                    fclose($fp);
+                }
+            } catch (\Throwable) {
+                // Abaikan jika gagal menulis file metrik agar tidak mengganggu request utama.
+            }
+
+            return $response;
+        }
+    }
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -19,6 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // API ini tidak punya halaman login (route bernama "login"),
         // jadi tamu tanpa token tidak boleh diarahkan ke mana pun.
         $middleware->redirectGuestsTo(fn (Request $request) => null);
+        $middleware->append('RecordPrometheusMetricsMiddleware');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {

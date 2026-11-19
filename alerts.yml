@@ -1,0 +1,13 @@
+groups:
+  - name: booking_service_alerts
+    rules:
+      - alert: LayananTidakAktif
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+          application: booking-app
+        annotations:
+          summary: "Layanan {{ $labels.job }} ({{ $labels.instance }}) berhenti merespons (DOWN)"
+          description: "Target {{ $labels.job }} pada {{ $labels.instance }} berstatus DOWN (up == 0) selama lebih dari 30 detik. Tindakan pertama: Segera periksa status container dengan 'docker compose ps', lihat penyebab galat di 'docker compose logs --tail=50 {{ $labels.job }}', lalu jalankan kembali layanan dengan 'docker compose start <nama_layanan>'."
+          first_action: "Segera cek status container dengan 'docker compose ps', periksa log error melalui 'docker compose logs --tail=50 <layanan>', lalu hidupkan ulang container dengan 'docker compose start <layanan>'."

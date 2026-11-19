@@ -89,8 +89,79 @@ services:
     networks:
       - booking-net
 
+  prometheus:
+    image: prom/prometheus:v2.53.3
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+      - cadvisor
+      - node-exporter
+    logging: *default-logging
+    networks:
+      - booking-net
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dashboard.json:/var/lib/grafana/dashboards/dashboard.json:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    logging: *default-logging
+    networks:
+      - booking-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8081:8080"
+    logging: *default-logging
+    networks:
+      - booking-net
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    logging: *default-logging
+    networks:
+      - booking-net
+
 volumes:
   db_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   booking-net:
