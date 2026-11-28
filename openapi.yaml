@@ -1,0 +1,149 @@
+openapi: 3.0.3
+info:
+  title: Booking API — Fitur Check-in Kedatangan
+  version: 1.0.0
+  description: Kontrak API untuk mencatat check-in kedatangan booking fasilitas.
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local / Docker Compose Backend
+
+security:
+  - bearerAuth: []
+
+paths:
+  /bookings/{booking}/check-in:
+    post:
+      summary: Catat check-in kedatangan untuk satu booking
+      description: |
+        Mencatat kedatangan aktual pemesan untuk booking berstatus `confirmed`
+        dalam jendela waktu 30 menit sebelum `start_time` hingga sebelum `end_time`
+        pada `booking_date` yang sama.
+      parameters:
+        - name: booking
+          in: path
+          required: true
+          description: ID booking yang akan di-check-in
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequest'
+      responses:
+        '201':
+          description: Check-in berhasil dicatat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResponse'
+        '401':
+          description: Tidak terautentikasi (token Sanctum tidak ada atau tidak valid)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageError'
+              example:
+                message: Unauthenticated.
+        '404':
+          description: Booking dengan ID tersebut tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageError'
+              example:
+                message: No query results for model [App\Models\Booking] 999.
+        '409':
+          description: Booking sudah pernah di-check-in sebelumnya
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageError'
+              example:
+                message: Booking ini sudah melakukan check-in.
+        '422':
+          description: Validasi input atau aturan bisnis gagal (status bukan confirmed, di luar jendela waktu, atau attendee_count tidak valid)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                message: Check-in hanya dapat dilakukan pada status confirmed dan dalam rentang 30 menit sebelum jam mulai hingga sebelum jam selesai.
+                errors:
+                  booking:
+                    - Check-in hanya dapat dilakukan pada rentang 30 menit sebelum jam mulai hingga sebelum jam selesai.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  schemas:
+    CheckInRequest:
+      type: object
+      required:
+        - attendee_count
+      properties:
+        attendee_count:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 8
+        notes:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: Tim datang lengkap tepat waktu
+
+    CheckInData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        booking_id:
+          type: integer
+          example: 1
+        checked_in_by:
+          type: integer
+          example: 1
+        attendee_count:
+          type: integer
+          example: 8
+        checked_in_at:
+          type: string
+          format: date-time
+          example: '2026-11-28T09:45:00Z'
+        notes:
+          type: string
+          nullable: true
+          example: Tim datang lengkap tepat waktu
+
+    CheckInResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/CheckInData'
+
+    MessageError:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
