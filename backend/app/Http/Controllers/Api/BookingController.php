@@ -17,6 +17,7 @@ class BookingController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $bookings = Booking::query()
+            ->with('checkIn')
             ->when($request->query('facility'), fn ($q, $v) => $q->where('facility', $v))
             ->when($request->query('date'), fn ($q, $v) => $q->where('booking_date', $v))
             ->when($request->query('status'), fn ($q, $v) => $q->where('status', $v))
@@ -40,7 +41,7 @@ class BookingController extends Controller
 
     public function show(Booking $booking): BookingResource
     {
-        return new BookingResource($booking);
+        return new BookingResource($booking->load('checkIn'));
     }
 
     public function update(BookingRequest $request, Booking $booking): BookingResource
@@ -49,7 +50,7 @@ class BookingController extends Controller
 
         Log::info('booking.diubah', $this->konteks($request, 'mengubah booking', $booking));
 
-        return new BookingResource($booking);
+        return new BookingResource($booking->load('checkIn'));
     }
 
     public function destroy(Request $request, Booking $booking): JsonResponse

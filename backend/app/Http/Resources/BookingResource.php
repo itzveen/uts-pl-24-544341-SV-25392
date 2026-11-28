@@ -18,6 +18,9 @@ class BookingResource extends JsonResource
             'end_time' => substr($this->end_time, 0, 5),
             'status' => $this->status,
             'notes' => $this->notes,
+            'check_in' => $this->whenLoaded('checkIn', function () {
+                return $this->checkIn ? (new BookingCheckInResource($this->checkIn))->resolve() : null;
+            }),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
