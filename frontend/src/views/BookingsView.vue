@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref, watch } from 'vue'
 import http from '../api/http'
 import BookingForm from '../components/BookingForm.vue'
+import CheckInModal from '../components/CheckInModal.vue'
 import { formatDate, titleCase } from '../utils'
 
 const bookings = ref([])
@@ -15,6 +16,7 @@ const filters = reactive({ facility: '', date: '', status: '' })
 
 const showForm = ref(false)
 const editing = ref(null)
+const checkingIn = ref(null)
 const deleting = ref(null)
 const deleteBusy = ref(false)
 
@@ -70,6 +72,7 @@ function openEdit(booking) {
 
 function onSaved(message) {
   showForm.value = false
+  checkingIn.value = null
   showFlash(message)
   loadBookings()
 }
@@ -147,6 +150,7 @@ onMounted(() => {
             <th>Tanggal</th>
             <th>Jam</th>
             <th>Status</th>
+            <th>Kehadiran</th>
             <th>Catatan</th>
             <th>Aksi</th>
           </tr>
@@ -161,8 +165,21 @@ onMounted(() => {
             <td>
               <span class="badge" :class="`badge-${b.status}`">{{ titleCase(b.status) }}</span>
             </td>
+            <td>
+              <span v-if="b.check_in" class="badge badge-confirmed">
+                Hadir ({{ b.check_in.attendee_count }} org)
+              </span>
+              <span v-else class="muted">-</span>
+            </td>
             <td>{{ b.notes || '-' }}</td>
             <td class="actions">
+              <button
+                v-if="b.status === 'confirmed' && !b.check_in"
+                class="btn btn-small btn-primary"
+                @click="checkingIn = b"
+              >
+                Check-in
+              </button>
               <button class="btn btn-small btn-outline" @click="openEdit(b)">Ubah</button>
               <button class="btn btn-small btn-danger" @click="deleting = b">Hapus</button>
             </td>
@@ -179,6 +196,14 @@ onMounted(() => {
       :statuses="statuses"
       @saved="onSaved"
       @cancel="showForm = false"
+    />
+
+    <CheckInModal
+      v-if="checkingIn"
+      :key="checkingIn.id"
+      :booking="checkingIn"
+      @saved="onSaved"
+      @cancel="checkingIn = null"
     />
 
     <div v-if="deleting" class="modal-backdrop" @click.self="deleting = null">
